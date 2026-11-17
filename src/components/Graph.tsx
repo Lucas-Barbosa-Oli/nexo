@@ -256,7 +256,6 @@ export default function Graph({ notes, links, scope, selected, onOpen }: {
     <section className="graph-page" aria-labelledby="graph-title">
       <header className="graph-header">
         <div>
-          <div className="eyebrow graph-eyebrow"><Network size={14} /> MAPA DO SEU ESPAÇO</div>
           <h1 id="graph-title">Conexões</h1>
           <p>{visible.length} de {notes.length} documentos <span aria-hidden="true">·</span> {connectionLabel(count)}</p>
         </div>
