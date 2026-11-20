@@ -1,57 +1,240 @@
-import { ArrowRight, CalendarDays, FileText, Network, Search, Table2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { ArrowRight, CalendarDays, FileText, Network, PenLine, Plus, Search, Sparkles, Table2 } from 'lucide-react';
 import type { Note } from '../lib/vault';
 
-export default function StartPage({ notes, onCreate, onSearch, onGraph, onLibrary, onDaily, onOpen, formatDate }: {
+export interface QuickCreateOptions {
+  title: string;
+  content?: string;
+  focus?: 'title' | 'body';
+}
+
+const STARTER_TEMPLATES = [
+  {
+    title: 'Ideia rápida',
+    content: '# Ideia rápida\n\nO que quero registrar agora:\n\n- \n\n#ideias',
+  },
+  {
+    title: 'Lista de tarefas',
+    content: '# Lista de tarefas\n\n- [ ] Primeira tarefa\n- [ ] Segunda tarefa\n- [ ] \n\n#tarefas',
+  },
+  {
+    title: 'Resumo de estudo',
+    content: '# Resumo de estudo\n\n## Pontos principais\n\n- \n\n## Dúvidas para revisar\n\n- \n\n#estudos',
+  },
+] as const;
+
+export default function StartPage({
+  notes,
+  onCreate,
+  onQuickCreate,
+  onSearch,
+  onGraph,
+  onLibrary,
+  onDaily,
+  onOpen,
+  formatDate,
+  isDemo = false,
+  hasCreatedNote,
+}: {
   notes: Note[];
   onCreate: (kind: 'note' | 'sheet') => void;
+  onQuickCreate?: (options: QuickCreateOptions) => void;
   onSearch: () => void;
   onGraph: () => void;
   onLibrary: () => void;
   onDaily: () => void;
   onOpen: (id: string) => void;
   formatDate: (date: string) => string;
+  isDemo?: boolean;
+  hasCreatedNote?: boolean;
 }) {
+  const [draftTitle, setDraftTitle] = useState('');
   const recent = [...notes].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 5);
+  const resolvedHasCreated = hasCreatedNote ?? (!isDemo && notes.length > 0);
+  const isEmpty = notes.length === 0;
+  const isFirstNote = isEmpty || !resolvedHasCreated;
+  const showExampleBadge = isDemo && !resolvedHasCreated && recent.length > 0;
+
+  function nextDefaultTitle() {
+    const existing = new Set(notes.map(n => n.title.trim().toLocaleLowerCase()));
+    return existing.has('minha primeira nota') ? 'Nova nota' : 'Minha primeira nota';
+  }
+
+  function handleQuickSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = draftTitle.trim();
+    if (onQuickCreate) {
+      onQuickCreate({
+        title: trimmed || nextDefaultTitle(),
+        focus: trimmed ? 'body' : 'title',
+      });
+      setDraftTitle('');
+      return;
+    }
+    onCreate('note');
+  }
+
+  function handleTemplateClick(template: (typeof STARTER_TEMPLATES)[number]) {
+    if (onQuickCreate) {
+      onQuickCreate({
+        title: template.title,
+        content: template.content,
+        focus: 'body',
+      });
+      return;
+    }
+    onCreate('note');
+  }
+
   const actions = [
-    { title: 'Escrever uma nota', detail: 'Registre uma ideia, resumo ou lista.', icon: FileText, action: () => onCreate('note'), tone: 'peach' },
-    { title: 'Criar planilha', detail: 'Organize valores e faça cálculos.', icon: Table2, action: () => onCreate('sheet'), tone: 'blue' },
-    { title: 'Buscar documentos', detail: 'Encontre notas pelo título ou texto.', icon: Search, action: onSearch, tone: 'sand' },
-    { title: 'Explorar conexões', detail: 'Veja quais notas se referenciam.', icon: Network, action: onGraph, tone: 'lilac' },
+    {
+      title: 'Escrever uma nota',
+      detail: 'Registre uma ideia, resumo ou lista.',
+      icon: FileText,
+      action: () => onCreate('note'),
+      tone: 'peach',
+      featured: true,
+    },
+    {
+      title: 'Criar planilha',
+      detail: 'Organize valores e faça cálculos.',
+      icon: Table2,
+      action: () => onCreate('sheet'),
+      tone: 'blue',
+      featured: false,
+    },
+    {
+      title: 'Buscar documentos',
+      detail: 'Encontre notas pelo título ou texto.',
+      icon: Search,
+      action: onSearch,
+      tone: 'sand',
+      featured: false,
+    },
+    {
+      title: 'Explorar conexões',
+      detail: 'Veja quais notas se referenciam.',
+      icon: Network,
+      action: onGraph,
+      tone: 'lilac',
+      featured: false,
+    },
   ];
 
   return (
     <section className="start-page" aria-labelledby="start-title">
       <div className="start-inner">
-        <header className="start-header">
-          <div>
-            <h1 id="start-title">O que vamos fazer hoje?</h1>
-            <p>Escolha uma tarefa ou retome um documento recente.</p>
-          </div>
-          <button type="button" className="secondary" onClick={onDaily}><CalendarDays size={17} /> Nota do dia</button>
-        </header>
+        {isFirstNote ? (
+          <header className="start-header start-header-first">
+            <div className="start-header-copy">
+              <span className="eyebrow start-eyebrow">
+                <Sparkles size={13} aria-hidden="true" />
+                {isDemo ? 'PRIMEIRA VISITA · DEMONSTRAÇÃO' : 'COMECE POR AQUI'}
+              </span>
+              <h1 id="start-title">Crie sua primeira nota</h1>
+              <p>
+                {isEmpty
+                  ? 'Digite um título abaixo ou escolha um modelo. A nota abre direto no editor.'
+                  : 'A demonstração traz exemplos para explorar, mas você já pode criar sua primeira nota agora.'}
+              </p>
+            </div>
+
+            <form className="start-composer" onSubmit={handleQuickSubmit}>
+              <label className="sr-only" htmlFor="start-first-note-title">Título da primeira nota</label>
+              <input
+                id="start-first-note-title"
+                type="text"
+                maxLength={500}
+                placeholder="Ex.: Ideias para hoje, resumo ou lista…"
+                value={draftTitle}
+                onChange={e => setDraftTitle(e.target.value)}
+              />
+              <button type="submit" className="primary start-composer-submit">
+                <PenLine size={17} aria-hidden="true" /> Criar primeira nota
+              </button>
+            </form>
+
+            <div className="start-templates" aria-label="Modelos rápidos para começar">
+              <span className="start-templates-label">Ou comece com um modelo:</span>
+              <div className="start-template-list">
+                {STARTER_TEMPLATES.map(template => (
+                  <button
+                    key={template.title}
+                    type="button"
+                    className="start-template-chip"
+                    onClick={() => handleTemplateClick(template)}
+                  >
+                    <Plus size={13} aria-hidden="true" /> {template.title}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="secondary start-daily-btn" onClick={onDaily}>
+                <CalendarDays size={16} aria-hidden="true" /> Nota do dia
+              </button>
+            </div>
+          </header>
+        ) : (
+          <header className="start-header">
+            <div className="start-header-copy">
+              <h1 id="start-title">O que vamos fazer hoje?</h1>
+              <p>Crie uma nova nota ou retome um documento recente.</p>
+            </div>
+            <div className="start-header-actions">
+              <button type="button" className="primary" onClick={() => onCreate('note')}>
+                <Plus size={17} aria-hidden="true" /> Nova nota
+              </button>
+              <button type="button" className="secondary" onClick={onDaily}>
+                <CalendarDays size={17} aria-hidden="true" /> Nota do dia
+              </button>
+            </div>
+          </header>
+        )}
+
         <div className="start-actions" aria-label="Ações rápidas">
-          {actions.map(({ title, detail, icon: Icon, action, tone }) => (
-            <button key={title} type="button" className="start-action" data-tone={tone} onClick={action}>
-              <span className="start-action-icon"><Icon size={21} /></span>
+          {actions.map(({ title, detail, icon: Icon, action, tone, featured }) => (
+            <button
+              key={title}
+              type="button"
+              className="start-action"
+              data-tone={tone}
+              data-featured={featured ? 'true' : undefined}
+              onClick={action}
+            >
+              <span className="start-action-icon"><Icon size={21} aria-hidden="true" /></span>
               <strong>{title}</strong>
               <span>{detail}</span>
               <ArrowRight className="start-arrow" size={17} aria-hidden="true" />
             </button>
           ))}
         </div>
+
         <div className="start-lower">
           <section className="start-panel" aria-labelledby="recent-title">
             <div className="start-panel-heading">
-              <h2 id="recent-title">Recentes</h2>
-              <button type="button" onClick={onLibrary}>Ver biblioteca <ArrowRight size={14} /></button>
+              <div className="start-panel-title">
+                <h2 id="recent-title">Recentes</h2>
+                {showExampleBadge && <span className="start-demo-badge">Exemplos</span>}
+              </div>
+              <button type="button" onClick={onLibrary}>Ver biblioteca <ArrowRight size={14} aria-hidden="true" /></button>
             </div>
             {recent.length ? recent.map(note => (
               <button key={note.id} type="button" className="start-recent" onClick={() => onOpen(note.id)}>
-                {note.kind === 'sheet' ? <Table2 size={17} /> : <FileText size={17} />}
+                {note.kind === 'sheet' ? <Table2 size={17} aria-hidden="true" /> : <FileText size={17} aria-hidden="true" />}
                 <span>{note.title || 'Sem título'}</span>
                 <small>{formatDate(note.updated_at)}</small>
               </button>
-            )) : <p>Os documentos que você criar aparecem aqui.</p>}
+            )) : (
+              <div className="start-empty">
+                <p>Os documentos que você criar aparecem aqui.</p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => onQuickCreate ? onQuickCreate({ title: nextDefaultTitle(), focus: 'title' }) : onCreate('note')}
+                >
+                  <Plus size={15} aria-hidden="true" /> Criar primeira nota
+                </button>
+              </div>
+            )}
           </section>
           <section className="start-panel start-guide" aria-labelledby="guide-title">
             <h2 id="guide-title">Como usar o Nexo</h2>
