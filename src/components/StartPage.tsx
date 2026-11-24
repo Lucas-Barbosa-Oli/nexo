@@ -1,5 +1,17 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, CalendarDays, FileText, Network, PenLine, Plus, Search, Sparkles, Table2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  ArrowRight,
+  CalendarDays,
+  FileText,
+  Network,
+  PenLine,
+  Plus,
+  Search,
+  Sparkles,
+  Star,
+  Table2,
+} from 'lucide-react';
 import type { Note } from '../lib/vault';
 
 export interface QuickCreateOptions {
@@ -25,6 +37,7 @@ const STARTER_TEMPLATES = [
 
 export default function StartPage({
   notes,
+  connectionCount = 0,
   onCreate,
   onQuickCreate,
   onSearch,
@@ -37,6 +50,7 @@ export default function StartPage({
   hasCreatedNote,
 }: {
   notes: Note[];
+  connectionCount?: number;
   onCreate: (kind: 'note' | 'sheet') => void;
   onQuickCreate?: (options: QuickCreateOptions) => void;
   onSearch: () => void;
@@ -54,6 +68,8 @@ export default function StartPage({
   const isEmpty = notes.length === 0;
   const isFirstNote = isEmpty || !resolvedHasCreated;
   const showExampleBadge = isDemo && !resolvedHasCreated && recent.length > 0;
+  const sheetCount = notes.filter(n => n.kind === 'sheet').length;
+  const noteCount = notes.length - sheetCount;
 
   function nextDefaultTitle() {
     const existing = new Set(notes.map(n => n.title.trim().toLocaleLowerCase()));
@@ -123,20 +139,34 @@ export default function StartPage({
 
   return (
     <section className="start-page" aria-labelledby="start-title">
-      <div className="start-inner">
+      <motion.div
+        className="start-inner"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      >
         {isFirstNote ? (
           <header className="start-header start-header-first">
-            <div className="start-header-copy">
-              <span className="eyebrow start-eyebrow">
-                <Sparkles size={13} aria-hidden="true" />
-                {isDemo ? 'PRIMEIRA VISITA · DEMONSTRAÇÃO' : 'COMECE POR AQUI'}
-              </span>
-              <h1 id="start-title">Crie sua primeira nota</h1>
-              <p>
-                {isEmpty
-                  ? 'Digite um título abaixo ou escolha um modelo. A nota abre direto no editor.'
-                  : 'A demonstração traz exemplos para explorar, mas você já pode criar sua primeira nota agora.'}
-              </p>
+            <div className="start-header-top">
+              <div className="start-header-copy">
+                <span className="eyebrow start-eyebrow">
+                  <Sparkles size={13} aria-hidden="true" />
+                  {isDemo ? 'PRIMEIRA VISITA · DEMONSTRAÇÃO' : 'COMECE POR AQUI'}
+                </span>
+                <h1 id="start-title">Crie sua primeira nota</h1>
+                <p>
+                  {isEmpty
+                    ? 'Digite um título abaixo ou escolha um modelo. A nota abre direto no editor.'
+                    : 'A demonstração traz exemplos para explorar, mas você já pode criar sua primeira nota agora.'}
+                </p>
+              </div>
+              {notes.length > 0 && (
+                <div className="start-stats" aria-label="Resumo do espaço">
+                  <span><strong>{noteCount}</strong> {noteCount === 1 ? 'nota' : 'notas'}</span>
+                  <span><strong>{sheetCount}</strong> {sheetCount === 1 ? 'planilha' : 'planilhas'}</span>
+                  <span><strong>{connectionCount}</strong> {connectionCount === 1 ? 'conexão' : 'conexões'}</span>
+                </div>
+              )}
             </div>
 
             <form className="start-composer" onSubmit={handleQuickSubmit}>
@@ -178,6 +208,13 @@ export default function StartPage({
             <div className="start-header-copy">
               <h1 id="start-title">O que vamos fazer hoje?</h1>
               <p>Crie uma nova nota ou retome um documento recente.</p>
+              {notes.length > 0 && (
+                <div className="start-stats start-stats-inline" aria-label="Resumo do espaço">
+                  <span><strong>{noteCount}</strong> {noteCount === 1 ? 'nota' : 'notas'}</span>
+                  <span><strong>{sheetCount}</strong> {sheetCount === 1 ? 'planilha' : 'planilhas'}</span>
+                  <span><strong>{connectionCount}</strong> {connectionCount === 1 ? 'conexão' : 'conexões'}</span>
+                </div>
+              )}
             </div>
             <div className="start-header-actions">
               <button type="button" className="primary" onClick={() => onCreate('note')}>
@@ -215,12 +252,15 @@ export default function StartPage({
                 <h2 id="recent-title">Recentes</h2>
                 {showExampleBadge && <span className="start-demo-badge">Exemplos</span>}
               </div>
-              <button type="button" onClick={onLibrary}>Ver biblioteca <ArrowRight size={14} aria-hidden="true" /></button>
+              <button type="button" onClick={onLibrary}>
+                Ver biblioteca <ArrowRight size={14} aria-hidden="true" />
+              </button>
             </div>
             {recent.length ? recent.map(note => (
               <button key={note.id} type="button" className="start-recent" onClick={() => onOpen(note.id)}>
                 {note.kind === 'sheet' ? <Table2 size={17} aria-hidden="true" /> : <FileText size={17} aria-hidden="true" />}
                 <span>{note.title || 'Sem título'}</span>
+                {note.favorite && <Star size={12} className="start-recent-star" aria-label="Favorita" />}
                 <small>{formatDate(note.updated_at)}</small>
               </button>
             )) : (
@@ -238,12 +278,25 @@ export default function StartPage({
           </section>
           <section className="start-panel start-guide" aria-labelledby="guide-title">
             <h2 id="guide-title">Como usar o Nexo</h2>
-            <details><summary>Como conecto duas notas?</summary><p>Na edição, digite <code>[[Título da nota]]</code>. Abra <strong>Conexões</strong> para ver o link no mapa.</p></details>
-            <details><summary>Como faço um cálculo?</summary><p>Na planilha, toque em uma célula e digite <code>=SOMA(A1:A5)</code> na barra de fórmula. Na nota, abra <strong>Calculadora</strong>.</p></details>
-            <details><summary>Como organizo minhas notas?</summary><p>Crie uma pasta pelo menu ou use <code>#tema</code> no texto. Abra <strong>Biblioteca</strong> para buscar seus documentos.</p></details>
+            <details>
+              <summary>Como conecto duas notas?</summary>
+              <p>Na edição, digite <code>[[Título da nota]]</code>. Abra <strong>Conexões</strong> para ver o link no mapa.</p>
+            </details>
+            <details>
+              <summary>Como uso a busca rápida?</summary>
+              <p>Pressione <code>⌘K</code> (ou <code>Ctrl+K</code>) em qualquer tela para abrir notas, pastas ou ações sem sair do que está fazendo.</p>
+            </details>
+            <details>
+              <summary>Como faço um cálculo?</summary>
+              <p>Na planilha, toque em uma célula e digite <code>=SOMA(A1:A5)</code> na barra de fórmula. Na nota, abra <strong>Calculadora</strong>.</p>
+            </details>
+            <details>
+              <summary>Como organizo minhas notas?</summary>
+              <p>Crie uma pasta pelo menu ou use <code>#tema</code> no texto. Abra <strong>Biblioteca</strong> para filtrar seus documentos.</p>
+            </details>
           </section>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

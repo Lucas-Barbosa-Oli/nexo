@@ -63,7 +63,9 @@ export function renderMarkdown(md: string, titles: Set<string>): string {
     renderer: (t) => `<span class="md-tag" data-tag="${escapeHtml(t.text.toLowerCase())}">#${escapeHtml(t.text)}</span>`,
   };
   const marked = new Marked({ gfm: true, breaks: true, extensions: [blockMath, inlineMath, wiki, tag] });
-  const html = marked.parse(md, { async: false }) as string;
+  const html = (marked.parse(md, { async: false }) as string).replace(
+    /<input\b([^>]*)\bdisabled(?:=""|="disabled")?([^>]*type="checkbox"[^>]*|[^>]*)/gi,
+    (match) => (match.includes('type="checkbox"') ? match.replace(/\s+disabled(?:=""|="disabled")?/i, '') : match),
+  );
   return DOMPurify.sanitize(html, { ADD_ATTR: ["data-wikilink", "data-tag"] });
 }
-
