@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
+      registerType: 'autoUpdate',
+      includeAssets: ['icon-nexo.svg', 'icon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Nexo — seu espaço de ideias',
         short_name: 'Nexo',
@@ -20,7 +20,7 @@ export default defineConfig({
         scope: '/',
         lang: 'pt-BR',
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon-nexo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],

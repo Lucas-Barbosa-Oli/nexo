@@ -32,10 +32,13 @@ import {
   House,
   Laptop,
   Link2,
+  List,
+  ListOrdered,
   LogOut,
   Maximize2,
   Menu,
   Minimize2,
+  Minus,
   Moon,
   Network,
   PanelLeftClose,
@@ -43,6 +46,7 @@ import {
   PanelRightOpen,
   PenLine,
   Plus,
+  Quote,
   Search,
   Settings,
   Star,
@@ -1765,6 +1769,36 @@ function Editor({
     });
   }
 
+  function applyLinePrefix(kind: 'bullet' | 'numbered' | 'task' | 'quote') {
+    const el = ref.current;
+    const content = note.content;
+    const start = el?.selectionStart ?? content.length;
+    const end = el?.selectionEnd ?? start;
+    const lineStart = content.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    const nextNewline = content.indexOf('\n', end);
+    const lineEnd = nextNewline === -1 ? content.length : nextNewline;
+    const block = content.slice(lineStart, lineEnd);
+    const lines = block.split('\n');
+    const transformed = lines
+      .map((line, i) => {
+        const clean = line.replace(/^(\s*)(?:[-*]\s+\[[ xX]\]\s+|[-*]\s+|\d+\.\s+|>\s+)/, '$1');
+        const indent = /^(\s*)/.exec(clean)?.[1] ?? '';
+        const body = clean.slice(indent.length);
+        if (kind === 'bullet') return `${indent}- ${body}`;
+        if (kind === 'numbered') return `${indent}${i + 1}. ${body}`;
+        if (kind === 'task') return `${indent}- [ ] ${body}`;
+        return `${indent}> ${body}`;
+      })
+      .join('\n');
+    const next = content.slice(0, lineStart) + transformed + content.slice(lineEnd);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const cursor = lineStart + transformed.length;
+      el?.setSelectionRange(cursor, cursor);
+    });
+  }
+
   function acceptSuggestion(label: string) {
     const el = ref.current;
     if (!el) return;
@@ -1800,6 +1834,50 @@ function Editor({
         e.preventDefault();
         setSuggest('');
         return;
+      }
+    }
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      const el = e.currentTarget;
+      const pos = el.selectionStart;
+      if (pos === el.selectionEnd) {
+        const lineStart = note.content.lastIndexOf('\n', Math.max(0, pos - 1)) + 1;
+        const currentLine = note.content.slice(lineStart, pos);
+        const taskMatch = /^(\s*)([-*]\s+\[[ xX]\]\s+)(.*)$/.exec(currentLine);
+        const numMatch = /^(\s*)(\d+)\.\s+(.*)$/.exec(currentLine);
+        const bulletMatch = /^(\s*)([-*])\s+(.*)$/.exec(currentLine);
+        if (taskMatch) {
+          e.preventDefault();
+          if (!taskMatch[3].trim()) {
+            const next = note.content.slice(0, lineStart) + note.content.slice(pos);
+            onChange(next);
+            requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart));
+          } else {
+            insert(`\n${taskMatch[1]}- [ ] `);
+          }
+          return;
+        }
+        if (numMatch) {
+          e.preventDefault();
+          if (!numMatch[3].trim()) {
+            const next = note.content.slice(0, lineStart) + note.content.slice(pos);
+            onChange(next);
+            requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart));
+          } else {
+            insert(`\n${numMatch[1]}${Number(numMatch[2]) + 1}. `);
+          }
+          return;
+        }
+        if (bulletMatch) {
+          e.preventDefault();
+          if (!bulletMatch[3].trim()) {
+            const next = note.content.slice(0, lineStart) + note.content.slice(pos);
+            onChange(next);
+            requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart));
+          } else {
+            insert(`\n${bulletMatch[1]}${bulletMatch[2]} `);
+          }
+          return;
+        }
       }
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -1842,11 +1920,24 @@ function Editor({
                 <Code2 size={15} />
               </button>
               <span />
-              <button type="button" onClick={() => wrapOrInsert('[[', ']]', 'Nome da nota')} title="Conectar nota">
-                <Link2 size={16} />
+              <button type="button" onClick={() => applyLinePrefix('bullet')} title="Lista com marcadores" aria-label="Lista com marcadores">
+                <List size={16} />
               </button>
-              <button type="button" onClick={() => insert('\n- [ ] Tarefa\n')} title="Adicionar tarefa">
+              <button type="button" onClick={() => applyLinePrefix('numbered')} title="Lista numerada" aria-label="Lista numerada">
+                <ListOrdered size={16} />
+              </button>
+              <button type="button" onClick={() => applyLinePrefix('task')} title="Lista de tarefas" aria-label="Lista de tarefas">
                 <Check size={16} />
+              </button>
+              <button type="button" onClick={() => applyLinePrefix('quote')} title="Citação" aria-label="Citação">
+                <Quote size={15} />
+              </button>
+              <button type="button" onClick={() => insert('\n---\n')} title="Linha divisória" aria-label="Linha divisória">
+                <Minus size={15} />
+              </button>
+              <span />
+              <button type="button" onClick={() => wrapOrInsert('[[', ']]', 'Nome da nota')} title="Conectar nota" aria-label="Conectar nota">
+                <Link2 size={16} />
               </button>
               <button type="button" onClick={() => wrapOrInsert('$', '$', 'x^2')} title="Inserir fórmula">
                 ƒx

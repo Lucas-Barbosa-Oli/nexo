@@ -508,6 +508,27 @@
   width: 100%;
   margin-inline: auto;
 }
+.editor-content {
+  flex: 1 0 auto;
+}
+.document-footer {
+  flex-shrink: 0;
+  background: var(--paper);
+  position: relative;
+  z-index: 1;
+}
+.format-toolbar {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.format-toolbar > div {
+  flex-wrap: wrap;
+}
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 26px 0;
+}
 .markdown input[type="checkbox"] {
   accent-color: var(--accent);
   width: 15px;
